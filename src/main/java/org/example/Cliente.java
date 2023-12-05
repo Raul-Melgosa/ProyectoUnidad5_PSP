@@ -14,6 +14,11 @@ import java.io.ObjectOutputStream;
 import java.security.*;
 
 public class Cliente {
+    private static ObjectOutputStream out;
+    private static ObjectInputStream in;
+    private static PrivateKey privateKey;
+    private static PublicKey serverPublicKey;
+
     public static void main(String[] args) {
         try {
             System.setProperty("javax.net.ssl.trustStore", "Certificate/SSLCertificate");
@@ -22,38 +27,48 @@ public class Cliente {
             SSLSocketFactory sfact = (SSLSocketFactory) SSLSocketFactory.getDefault();
             SSLSocket servidor = (SSLSocket) sfact.createSocket("localhost", 8182);
 
-            ObjectOutputStream out = new ObjectOutputStream(servidor.getOutputStream());
-            ObjectInputStream in = new ObjectInputStream(servidor.getInputStream());
+            out = new ObjectOutputStream(servidor.getOutputStream());
+            in = new ObjectInputStream(servidor.getInputStream());
 
             KeyPair keypair = EncryptionHelper.generateKeyPair();
-            PrivateKey privateKey = keypair.getPrivate();
-            PublicKey serverPublicKey = (PublicKey) in.readObject();
+            privateKey = keypair.getPrivate();
+            serverPublicKey = (PublicKey) in.readObject();
             out.writeObject(keypair.getPublic());
 
             String instrucciones = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
 
-            Integer option = InputHelper.showMenu(1,3,instrucciones,"");
+            Integer option = InputHelper.showMenu(1, 3, instrucciones, "");
             out.writeObject(option);
 
-            if(option == 1) {
-                //login();
-            } else if (option == 2) {
-                //register();
+            if (option == 1 || option == 2) {
+                login();
             } else if (option == 3) {
                 servidor.close();
             }
 
-        } catch (IOException | NoSuchAlgorithmException |
-                 ClassNotFoundException e) {
+        } catch (IOException | NoSuchAlgorithmException | ClassNotFoundException | InvalidKeyException |
+                 BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException e) {
             throw new RuntimeException(e);
-        } catch (NoSuchPaddingException e) {
-            throw new RuntimeException(e);
-        } catch (IllegalBlockSizeException e) {
-            throw new RuntimeException(e);
-        } catch (BadPaddingException e) {
-            throw new RuntimeException(e);
-        } catch (InvalidKeyException e) {
-            throw new RuntimeException(e);
+        }
+    }
+
+    private static void login() throws IOException, ClassNotFoundException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+        String message = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
+        String response = InputHelper.getUserInput(message);
+        out.writeObject(EncryptionHelper.encryptMessage(response, serverPublicKey));
+        boolean valid = (boolean) in.readObject();
+        while (!valid) {
+            message = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
+            response = InputHelper.getUserInput(message);
+            out.writeObject(EncryptionHelper.encryptMessage(response, serverPublicKey));
+            valid = (boolean) in.readObject();
+        }
+
+        valid = false;
+        while (!valid) {
+            message = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
+            out.writeObject(EncryptionHelper.encryptMessage(InputHelper.getUserInput(message), serverPublicKey));
+            valid = (boolean) in.readObject();
         }
     }
 }
