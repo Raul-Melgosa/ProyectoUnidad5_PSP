@@ -7,7 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class UserProvider {
-    public static List<User> getAll() {
+    public synchronized List<User> getAll() {
         List<User> users = new LinkedList<>();
         try {
             File fichero = new File("./Storage/users.dat");
@@ -39,7 +39,7 @@ public class UserProvider {
         return users;
     }
 
-    public static boolean writeToFile(List<User> users) {
+    public synchronized boolean writeToFile(List<User> users) {
         boolean error = false;
         try {
             File fichero = new File("./Storage/users.dat");
