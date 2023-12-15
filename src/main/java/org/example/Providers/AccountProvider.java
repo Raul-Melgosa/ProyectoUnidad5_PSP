@@ -1,13 +1,16 @@
 package org.example.Providers;
 
 import org.example.Models.Account;
+import org.example.Models.User;
 
 import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 public class AccountProvider {
-    public static List<Account> getAll() {
+    public synchronized List<Account> getAll() {
         List<Account> accounts = new LinkedList<>();
         try {
             File fichero = new File("./Storage/accounts.dat");
@@ -39,7 +42,7 @@ public class AccountProvider {
         return accounts;
     }
     
-    private static boolean writeToFile(List<Account> accounts) {
+    private synchronized boolean writeToFile(List<Account> accounts) {
         boolean error = false;
         try {
             File fichero = new File("./Storage/accounts.dat");
@@ -57,5 +60,40 @@ public class AccountProvider {
             error = true;
         }
         return error;
+    }
+
+    public List<Account> getAllByUser(User user) {
+        List<Account> accounts = this.getAll();
+        List<Account> userAccounts = new LinkedList<>();
+        for (Account account:accounts) {
+            if(account.getOwnersDni().equals(user.getDni())) {
+                userAccounts.add(account);
+            }
+        }
+        return userAccounts;
+    }
+
+    public synchronized void insertAccount(Account account) {
+        LinkedList<Account> accounts = (LinkedList<Account>) this.getAll();
+        accounts.add(account);
+        writeToFile(accounts);
+    }
+
+    public synchronized void editAccount(String accountNumber, Account account) {
+        LinkedList<Account> accounts = new LinkedList<>();
+
+        for (Account cuenta:this.getAll()) {
+            if(Objects.equals(accountNumber, cuenta.getAccountNumber())) {
+                accounts.add(account);
+            } else {
+                accounts.add(cuenta);
+            }
+        }
+        writeToFile(accounts);
+    }
+
+    public synchronized String getNewAccountNumber() {
+        UUID uuid = UUID.randomUUID();
+        return uuid.toString();
     }
 }

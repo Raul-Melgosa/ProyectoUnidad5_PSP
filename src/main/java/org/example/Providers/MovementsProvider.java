@@ -1,13 +1,15 @@
 package org.example.Providers;
 
+import org.example.Models.Account;
 import org.example.Models.Movement;
+import org.example.Models.User;
 
 import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
 
 public class MovementsProvider {
-    public static List<Movement> getAll() {
+    public synchronized List<Movement> getAll() {
         List<Movement> movements = new LinkedList<>();
         try {
             File fichero = new File("./Storage/movements.dat");
@@ -39,7 +41,7 @@ public class MovementsProvider {
         return movements;
     }
     
-    private static boolean writeToFile(List<Movement> movements) {
+    private synchronized boolean writeToFile(List<Movement> movements) {
         boolean error = false;
         try {
             File fichero = new File("./Storage/movements.dat");
@@ -57,5 +59,44 @@ public class MovementsProvider {
             error = true;
         }
         return error;
+    }
+
+    public List<Movement> getAllByAccount(Account account) {
+        List<Movement> movements = this.getAll();
+        List<Movement> accountMovements = new LinkedList<>();
+        for (Movement movement:movements) {
+            if(movement.getOriginAccountNumber().equals(account.getAccountNumber()) || movement.getDestinationAccountNumber().equals(account.getAccountNumber())) {
+                accountMovements.add(movement);
+            }
+        }
+        return accountMovements;
+    }
+
+    public List<Movement> getAllReceivedByAccount(Account account) {
+        List<Movement> movements = this.getAll();
+        List<Movement> accountMovements = new LinkedList<>();
+        for (Movement movement:movements) {
+            if(movement.getDestinationAccountNumber().equals(account.getAccountNumber())) {
+                accountMovements.add(movement);
+            }
+        }
+        return accountMovements;
+    }
+
+    public List<Movement> getAllSentByAccount(Account account) {
+        List<Movement> movements = this.getAll();
+        List<Movement> accountMovements = new LinkedList<>();
+        for (Movement movement:movements) {
+            if(movement.getOriginAccountNumber().equals(account.getAccountNumber())) {
+                accountMovements.add(movement);
+            }
+        }
+        return accountMovements;
+    }
+
+    public synchronized void insertMovement(Movement movement) {
+        LinkedList<Movement> movements = (LinkedList<Movement>) this.getAll();
+        movements.add(movement);
+        writeToFile(movements);
     }
 }

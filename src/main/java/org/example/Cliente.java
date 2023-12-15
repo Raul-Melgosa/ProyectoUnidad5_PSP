@@ -13,6 +13,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.SocketException;
 import java.security.*;
+import java.util.Objects;
 
 public class Cliente {
     private static SSLSocket servidor;
@@ -68,7 +69,7 @@ public class Cliente {
         boolean isRetry = false;
         int tries = 1;
         while (!loginCorrect && tries < 3) {
-            if(isRetry) {
+            if (isRetry) {
                 tries++;
                 String message = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
                 System.out.println(message);
@@ -90,8 +91,8 @@ public class Cliente {
             out.writeObject(EncryptionHelper.encryptMessage(InputHelper.getUserInput(message), serverPublicKey));
             loginCorrect = (boolean) in.readObject();
         }
-        if(!loginCorrect) {
-            System.out.println("Couldn't login in 3 attempts, closing app");
+        if (!loginCorrect) {
+            System.out.println("No se pudo iniciar sesión en 3 intentos o menos, cerrando aplicación");
             return;
         }
         app();
@@ -160,7 +161,7 @@ public class Cliente {
 
         boolean first = true;
         do {
-            if(first) {
+            if (first) {
                 first = false;
             } else {
                 System.out.println(EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey));
@@ -175,7 +176,7 @@ public class Cliente {
             response = InputHelper.getUserInput(message);
             out.writeObject(EncryptionHelper.encryptMessage(response, serverPublicKey));
             valid = (boolean) in.readObject();
-        } while(!valid);
+        } while (!valid);
 
         // Firma digital aceptar normas banco
         String mensajeNormas = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
@@ -188,7 +189,7 @@ public class Cliente {
             servidor.close();
             return;
         }
-        if(!firmaValida || InputHelper.showMenu(1,2,mensajeNormas,"") != 1) {
+        if (!firmaValida || InputHelper.showMenu(1, 2, mensajeNormas, "") != 1) {
             out.writeObject(false);
         } else {
             out.writeObject(true);
@@ -196,8 +197,63 @@ public class Cliente {
         }
     }
 
+    /**
+     * Hace el papel de aplicación cliente, constantemente recibe grupos de 2 parámetros,
+     * siendo el primero un String con el tipo de dato que se pide como respuesta (o la palabra SALIR para acabar)
+     * y el segundo el texto a mostrar al usuario
+     *
+     * @throws IOException
+     * @throws ClassNotFoundException
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     */
     private static void app() throws IOException, ClassNotFoundException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
-        String menu = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
-        InputHelper.showMenu(1,1,menu,"");
+        String dataType;
+        String serverMessage;
+        String[] dataTypeSplitted;
+        do {
+            dataType = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
+            serverMessage = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
+
+            dataTypeSplitted = dataType.split("#");
+            switch(dataTypeSplitted[0]) {
+                case "info":
+                    System.out.println(serverMessage);
+                    InputHelper.pressEnterToContinue("Presiona ENTER para continuar");
+                    break;
+                case "menu":
+                    int min = Integer.parseInt(dataTypeSplitted[1]);
+                    int max = Integer.parseInt(dataTypeSplitted[2]);
+                    int opcion = InputHelper.showMenu(min, max, serverMessage, "");
+                    out.writeObject(EncryptionHelper.encryptMessage(String.valueOf(opcion), serverPublicKey));
+                    break;
+                case "string":
+                    String string = InputHelper.getUserInput(serverMessage);
+                    out.writeObject(EncryptionHelper.encryptMessage(string, serverPublicKey));
+                    break;
+                case "integer":
+                    int minInt = Integer.parseInt(dataTypeSplitted[1]);
+                    int maxInt = Integer.parseInt(dataTypeSplitted[2]);
+                    int integerRespuesta = InputHelper.getNumericUserInput(serverMessage, minInt, maxInt);
+                    out.writeObject(EncryptionHelper.encryptMessage(String.valueOf(integerRespuesta), serverPublicKey));
+                    break;
+                case "double":
+                    double minDouble = Double.parseDouble(dataTypeSplitted[1]);
+                    double maxDouble = Double.parseDouble(dataTypeSplitted[2]);
+                    double doubleRespuesta = InputHelper.getNumericDecimalUserInput(serverMessage, minDouble, maxDouble);
+                    out.writeObject(EncryptionHelper.encryptMessage(String.valueOf(doubleRespuesta), serverPublicKey));
+                    break;
+                case "SALIR":
+                    System.out.println(serverMessage);
+                    servidor.close();
+                    break;
+                default:
+                    break;
+            }
+
+        } while(!Objects.equals(dataTypeSplitted[0], "SALIR"));
     }
 }
