@@ -73,6 +73,17 @@ public class AccountProvider {
         return userAccounts;
     }
 
+    public Account getByAccountNumber(String accountNumber) {
+        List<Account> accounts = this.getAll();
+        Account account = null;
+        for (Account a:accounts) {
+            if(a.getAccountNumber().equals(accountNumber)) {
+                account = a;
+            }
+        }
+        return account;
+    }
+
     public synchronized void insertAccount(Account account) {
         LinkedList<Account> accounts = (LinkedList<Account>) this.getAll();
         accounts.add(account);

@@ -19,10 +19,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.SocketException;
 import java.security.*;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class HiloServidor extends Thread {
     private String threadName;
@@ -88,6 +85,16 @@ public class HiloServidor extends Thread {
         }
     }
 
+    /**
+     * Se comunica con el cliente para pedir los datos de inicio de sesión
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     private void login() throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
         User usuario = null;
         boolean userMatches = false;
@@ -322,11 +329,11 @@ public class HiloServidor extends Thread {
     }
 
     private void cuenta(Account cuenta) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
+        cuenta = accountProvider.getByAccountNumber(cuenta.getAccountNumber());
         String menu = "Nombre: " + cuenta.getName() + "\nNúmero de cuenta: " + cuenta.getAccountNumber() + "\nSaldo: " + cuenta.getBalance() + "€" + "\n\nElige una acción:" + "\n1 - Ver todos los movimientos" + "\n2 - Ver movimientos de ingreso" + "\n3 - Ver movimientos de retirada" + "\n4 - Realizar ingreso desde cajero" + "\n5 - Realizar retirada desde cajero" + "\n6 - Volver a inicio";
         out.writeObject(EncryptionHelper.encryptMessage("menu#1#6", clientPublicKey));
         out.writeObject(EncryptionHelper.encryptMessage(menu, clientPublicKey));
         int opcion = Integer.parseInt(EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey));
-        System.out.println("OPCION = " + opcion);
         double cantidad;
 
         List<Movement> movimientos;
@@ -344,27 +351,53 @@ public class HiloServidor extends Thread {
                 verMovimientos(movimientos);
                 break;
             case 4:
-                System.out.println("SAEINAORFIBAOIUABTFOIUABTOIUABTOIABTWAOIUTB");
-                out.writeObject(EncryptionHelper.encryptMessage("double#0#" + 1000000, clientPublicKey));
+                out.writeObject(EncryptionHelper.encryptMessage("double#0#" + Double.MAX_VALUE, clientPublicKey));
                 out.writeObject(EncryptionHelper.encryptMessage("Introduce la cantidad en euros a ingresar: ", clientPublicKey));
                 cantidad = Double.parseDouble(EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey));
                 cuenta.setBalance(cuenta.getBalance() + cantidad);
                 accountProvider.editAccount(cuenta.getAccountNumber(), cuenta);
                 Movement ingresoCajero = new Movement("Cajero", cuenta.getAccountNumber(), cantidad, "Ingreso desde cajero");
                 movementsProvider.insertMovement(ingresoCajero);
+                out.writeObject(EncryptionHelper.encryptMessage("info", clientPublicKey));
+                out.writeObject(EncryptionHelper.encryptMessage("Operación realizada con éxito", clientPublicKey));
                 break;
             case 5:
                 out.writeObject(EncryptionHelper.encryptMessage("double#0#" + Double.MAX_VALUE, clientPublicKey));
                 out.writeObject(EncryptionHelper.encryptMessage("Introduce la cantidad en euros a retirar: ", clientPublicKey));
                 cantidad = Double.parseDouble(EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey));
+                cuenta = accountProvider.getByAccountNumber(cuenta.getAccountNumber());
                 cuenta.setBalance(cuenta.getBalance() - cantidad);
-                accountProvider.editAccount(cuenta.getAccountNumber(), cuenta);
-                Movement retiradaCajero = new Movement(cuenta.getAccountNumber(), "Cajero", cantidad, "Retirada desde cajero");
-                movementsProvider.insertMovement(retiradaCajero);
+                if (cuenta.getBalance() < 0) {
+                    out.writeObject(EncryptionHelper.encryptMessage("info", clientPublicKey));
+                    out.writeObject(EncryptionHelper.encryptMessage("No puedes retirar más dinero del que tienes en la cuenta, abortando", clientPublicKey));
+                }
+                if (numeroSeguridadCorrecto()) {
+                    accountProvider.editAccount(cuenta.getAccountNumber(), cuenta);
+                    Movement retiradaCajero = new Movement(cuenta.getAccountNumber(), "Cajero", cantidad, "Retirada desde cajero");
+                    movementsProvider.insertMovement(retiradaCajero);
+                    out.writeObject(EncryptionHelper.encryptMessage("info", clientPublicKey));
+                    out.writeObject(EncryptionHelper.encryptMessage("Operación realizada con éxito", clientPublicKey));
+                } else {
+                    out.writeObject(EncryptionHelper.encryptMessage("info", clientPublicKey));
+                    out.writeObject(EncryptionHelper.encryptMessage("El número de seguridad es incorrecto", clientPublicKey));
+                }
                 break;
             default:
                 break;
         }
+    }
+
+    private boolean numeroSeguridadCorrecto() throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
+        Random random = new Random();
+        String numeroSeguridad = String.valueOf(random.nextInt(0, 9)) + String.valueOf(random.nextInt(0, 9)) + String.valueOf(random.nextInt(0, 9)) + String.valueOf(random.nextInt(0, 9));
+
+        out.writeObject(EncryptionHelper.encryptMessage("info", clientPublicKey));
+        out.writeObject(EncryptionHelper.encryptMessage("Tu número de confirmación es: " + numeroSeguridad, clientPublicKey));
+
+        out.writeObject(EncryptionHelper.encryptMessage("integer#0#9999", clientPublicKey));
+        out.writeObject(EncryptionHelper.encryptMessage("Introduce el número de seguridad enviado: ", clientPublicKey));
+        String numeroRecibido = String.valueOf(Integer.parseInt(EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey)));
+        return numeroRecibido.equals(numeroSeguridad);
     }
 
     private void verMovimientos(List<Movement> movimientos) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
@@ -378,9 +411,9 @@ public class HiloServidor extends Thread {
         out.writeObject(EncryptionHelper.encryptMessage("menu#1#" + x, clientPublicKey));
         out.writeObject(EncryptionHelper.encryptMessage(menu, clientPublicKey));
         int opcion = Integer.parseInt(EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey));
-        while(opcion != x) {
+        while (opcion != x) {
             out.writeObject(EncryptionHelper.encryptMessage("info", clientPublicKey));
-            out.writeObject(EncryptionHelper.encryptMessage(movimientos.get(opcion-1).toString(), clientPublicKey));
+            out.writeObject(EncryptionHelper.encryptMessage(movimientos.get(opcion - 1).toString(), clientPublicKey));
 
             out.writeObject(EncryptionHelper.encryptMessage("menu#1#" + x, clientPublicKey));
             out.writeObject(EncryptionHelper.encryptMessage(menu, clientPublicKey));
@@ -401,7 +434,64 @@ public class HiloServidor extends Thread {
         return;
     }
 
-    private void transferencia(User usuario) {
+    private void transferencia(User usuario) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
+        List<Account> cuentas = accountProvider.getAllByUser(usuario);
 
+        if (cuentas.isEmpty()) {
+            out.writeObject(EncryptionHelper.encryptMessage("menu#1#2", clientPublicKey));
+            out.writeObject(EncryptionHelper.encryptMessage("No tienes ninguna cuenta todavía, sin una no puedes realizar transferencias\n1 - Crear una ahora\n2 - Volver", clientPublicKey));
+            int opcion = Integer.parseInt(EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey));
+            if (opcion == 1) {
+                crearCuenta(usuario);
+            }
+        } else {
+            String menu = "Elige una cuenta:";
+            int x = 1;
+            for (Account cuenta : cuentas) {
+                menu += "\n" + x + " - " + cuenta.getAccountNumber();
+                x++;
+            }
+            menu += "\n" + x + " - Volver";
+            out.writeObject(EncryptionHelper.encryptMessage("menu#1#" + x, clientPublicKey));
+            out.writeObject(EncryptionHelper.encryptMessage(menu, clientPublicKey));
+            int opcion = Integer.parseInt(EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey));
+            if (opcion == x) {
+                return;
+            }
+            Account cuentaSeleccionada = cuentas.get(opcion - 1);
+            out.writeObject(EncryptionHelper.encryptMessage("string", clientPublicKey));
+            out.writeObject(EncryptionHelper.encryptMessage("Introduce el número de cuenta de la cuenta de destino", clientPublicKey));
+            String destinationAccountNumber = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
+            Account cuentaDestino = accountProvider.getByAccountNumber(destinationAccountNumber);
+            if (cuentaDestino == null) {
+                out.writeObject(EncryptionHelper.encryptMessage("info", clientPublicKey));
+                out.writeObject(EncryptionHelper.encryptMessage("No existe ninguna cuenta con ese número de cuenta", clientPublicKey));
+                return;
+            }
+            out.writeObject(EncryptionHelper.encryptMessage("double#0#" + Double.MAX_VALUE, clientPublicKey));
+            out.writeObject(EncryptionHelper.encryptMessage("Introduce la cantidad en euros a enviar: ", clientPublicKey));
+            double cantidad = Double.parseDouble(EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey));
+            cuentaSeleccionada = accountProvider.getByAccountNumber(cuentaSeleccionada.getAccountNumber());
+            if (cuentaSeleccionada.getBalance() < cantidad) {
+                out.writeObject(EncryptionHelper.encryptMessage("info", clientPublicKey));
+                out.writeObject(EncryptionHelper.encryptMessage("No se puede realizar una transferencia de un importe mayor al saldo de la cuena de origen", clientPublicKey));
+                return;
+            }
+            out.writeObject(EncryptionHelper.encryptMessage("string", clientPublicKey));
+            out.writeObject(EncryptionHelper.encryptMessage("Introduce el concepto de la transferencia", clientPublicKey));
+            String concepto = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
+            if (numeroSeguridadCorrecto()) {
+                cuentaSeleccionada = accountProvider.getByAccountNumber(cuentaSeleccionada.getAccountNumber());
+                cuentaDestino = accountProvider.getByAccountNumber(cuentaDestino.getAccountNumber());
+                cuentaSeleccionada.setBalance(cuentaSeleccionada.getBalance() - cantidad);
+                cuentaDestino.setBalance(cuentaDestino.getBalance() + cantidad);
+                accountProvider.editAccount(cuentaSeleccionada.getAccountNumber(), cuentaSeleccionada);
+                accountProvider.editAccount(cuentaDestino.getAccountNumber(), cuentaDestino);
+                Movement retiradaCajero = new Movement(cuentaSeleccionada.getAccountNumber(), cuentaDestino.getAccountNumber(), cantidad, concepto);
+                movementsProvider.insertMovement(retiradaCajero);
+                out.writeObject(EncryptionHelper.encryptMessage("info", clientPublicKey));
+                out.writeObject(EncryptionHelper.encryptMessage("Operación realizada con éxito", clientPublicKey));
+            }
+        }
     }
 }
