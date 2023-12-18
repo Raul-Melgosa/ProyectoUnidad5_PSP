@@ -10,6 +10,10 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class AccountProvider {
+    /**
+     * Recoge todos los objetos Account que haya en el archivo de almacenamiento de cuentas
+     * @return Lista de objetos Account
+     */
     public synchronized List<Account> getAll() {
         List<Account> accounts = new LinkedList<>();
         try {
@@ -41,7 +45,12 @@ public class AccountProvider {
         }
         return accounts;
     }
-    
+
+    /**
+     * Escribe al archivo de almacenamiento de cuentas todas las cuentas de una lista dada, SOBREESCRIBE el archivo completo
+     * @param accounts Lista de cuentas a insertar
+     * @return
+     */
     private synchronized boolean writeToFile(List<Account> accounts) {
         boolean error = false;
         try {
@@ -62,6 +71,11 @@ public class AccountProvider {
         return error;
     }
 
+    /**
+     * Dado un usuario devuelve todas sus cuentas asociadas
+     * @param user Usuario del cual se quieren obtener las cuentas
+     * @return Lista de Accounts
+     */
     public List<Account> getAllByUser(User user) {
         List<Account> accounts = this.getAll();
         List<Account> userAccounts = new LinkedList<>();
@@ -73,6 +87,11 @@ public class AccountProvider {
         return userAccounts;
     }
 
+    /**
+     * Devuelve la cuenta cuyo número de cuenta coincida con el dado
+     * @param accountNumber Número de cuenta por el cual se buscará
+     * @return El objeto Account que corresponda
+     */
     public Account getByAccountNumber(String accountNumber) {
         List<Account> accounts = this.getAll();
         Account account = null;
@@ -84,12 +103,21 @@ public class AccountProvider {
         return account;
     }
 
+    /**
+     * Inserta una nueva cuenta
+     * @param account Cuenta a insertar
+     */
     public synchronized void insertAccount(Account account) {
         LinkedList<Account> accounts = (LinkedList<Account>) this.getAll();
         accounts.add(account);
         writeToFile(accounts);
     }
 
+    /**
+     * Edita los datos de la cuenta que coincida con el número de cuenta dado
+     * @param accountNumber Número de cuenta de la cuenta a editar
+     * @param account Nuevos datos a insertar
+     */
     public synchronized void editAccount(String accountNumber, Account account) {
         LinkedList<Account> accounts = new LinkedList<>();
 
@@ -103,6 +131,10 @@ public class AccountProvider {
         writeToFile(accounts);
     }
 
+    /**
+     * Devuelve un nuevo número de cuenta único
+     * @return Número de cuenta generado
+     */
     public synchronized String getNewAccountNumber() {
         UUID uuid = UUID.randomUUID();
         return uuid.toString();

@@ -22,6 +22,10 @@ public class Cliente {
     private static PrivateKey privateKey;
     private static PublicKey serverPublicKey;
 
+    /**
+     * Crea y guarda como variable global una conexion con el servidor seguro y gestiona las posibles excepciones
+     * @param args
+     */
     public static void main(String[] args) {
         try {
             System.setProperty("javax.net.ssl.trustStore", "Certificate/SSLCertificate");
@@ -64,7 +68,20 @@ public class Cliente {
         }
     }
 
+    /**
+     * Se comunica con el servidor para iniciar sesión con un usuario (DNI) y una contraseña
+     * @throws IOException
+     * @throws ClassNotFoundException
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     */
     private static void login() throws IOException, ClassNotFoundException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+        // USUARIOS DE PRUEBA:
+        // DNI: 12345678A, PASSWORD: 123
+        // DNI: 12345678B, PASSWORD 123
         boolean loginCorrect = false;
         boolean isRetry = false;
         int tries = 1;
@@ -98,6 +115,16 @@ public class Cliente {
         app();
     }
 
+    /**
+     * Recibe instrucciones del servidor sobre los datos a mostrar al cliente y envía al servidor lo que el usuario introduce para acabar creando una cuenta de usuario
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     private static void register() throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
         // Dni
         String message = EncryptionHelper.decryptMessage((byte[]) in.readObject(), privateKey);
@@ -199,7 +226,7 @@ public class Cliente {
 
     /**
      * Hace el papel de aplicación cliente, constantemente recibe grupos de 2 parámetros,
-     * siendo el primero un String con el tipo de dato que se pide como respuesta (o la palabra SALIR para acabar)
+     * siendo el primero un String con el tipo de dato que el servidor requiere como respuesta (o la palabra SALIR para acabar)
      * y el segundo el texto a mostrar al usuario
      *
      * @throws IOException

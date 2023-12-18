@@ -9,6 +9,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class MovementsProvider {
+    /**
+     * Recoge todos los objetos Movement que haya en el archivo de almacenamiento de Movimientos
+     * @return Lista de objetos Movement
+     */
     public synchronized List<Movement> getAll() {
         List<Movement> movements = new LinkedList<>();
         try {
@@ -40,7 +44,12 @@ public class MovementsProvider {
         }
         return movements;
     }
-    
+
+    /**
+     * Escribe al archivo de almacenamiento de movimientos todos los movimientos de una lista dada, SOBREESCRIBE el archivo completo
+     * @param movements Lista de movimientos a insertar
+     * @return
+     */
     private synchronized boolean writeToFile(List<Movement> movements) {
         boolean error = false;
         try {
@@ -61,6 +70,11 @@ public class MovementsProvider {
         return error;
     }
 
+    /**
+     * Devuelve todos los movimientos asociados a una cuenta dada
+     * @param account La cuenta de la que se quieren obtener los movimientos
+     * @return Lista de movimientos
+     */
     public List<Movement> getAllByAccount(Account account) {
         List<Movement> movements = this.getAll();
         List<Movement> accountMovements = new LinkedList<>();
@@ -72,6 +86,11 @@ public class MovementsProvider {
         return accountMovements;
     }
 
+    /**
+     * Devuelve todos los movimientos en los que una cuenta dada es la cuenta de destino
+     * @param account La cuenta de la que se quieren obtener los movimientos
+     * @return Lista de movimientos
+     */
     public List<Movement> getAllReceivedByAccount(Account account) {
         List<Movement> movements = this.getAll();
         List<Movement> accountMovements = new LinkedList<>();
@@ -83,6 +102,11 @@ public class MovementsProvider {
         return accountMovements;
     }
 
+    /**
+     * Devuelve todos los movimientos en los que uno cuenta dada es la cuenta de origen
+     * @param account La cuenta de la que se quieren obtener los movimientos
+     * @return Lista de movimientos
+     */
     public List<Movement> getAllSentByAccount(Account account) {
         List<Movement> movements = this.getAll();
         List<Movement> accountMovements = new LinkedList<>();
@@ -94,6 +118,10 @@ public class MovementsProvider {
         return accountMovements;
     }
 
+    /**
+     * Inserta un nuevo movimiento
+     * @param movement El movimiento a insertar
+     */
     public synchronized void insertMovement(Movement movement) {
         LinkedList<Movement> movements = (LinkedList<Movement>) this.getAll();
         movements.add(movement);

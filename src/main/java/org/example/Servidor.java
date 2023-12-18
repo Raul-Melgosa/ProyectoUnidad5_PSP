@@ -10,6 +10,10 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 
 public class Servidor {
+    /**
+     * Instancia un servidor seguro haciendo uso de un certificado SSL, va lanzando hilos según los clientes se vayan conectando
+     * @param args
+     */
     public static void main(String[] args) {
         try {
             System.setProperty("javax.net.ssl.keyStore", "Certificate/AlmacenSSL.jks");

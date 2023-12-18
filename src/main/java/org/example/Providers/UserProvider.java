@@ -7,6 +7,10 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class UserProvider {
+    /**
+     * Recoge todos los objetos Usuario que haya en el archivo de almacenamiento de Usuarios
+     * @return Lista de objetos Usuario
+     */
     public synchronized List<User> getAll() {
         List<User> users = new LinkedList<>();
         try {
@@ -39,6 +43,11 @@ public class UserProvider {
         return users;
     }
 
+    /**
+     * Escribe al archivo de almacenamiento de usuarios todos los usuarios de una lista dada, SOBREESCRIBE el archivo completo
+     * @param users Lista de usuarios a insertar
+     * @return true en caso de que haya algún error
+     */
     public synchronized boolean writeToFile(List<User> users) {
         boolean error = false;
         try {

@@ -40,6 +40,9 @@ public class HiloServidor extends Thread {
         this.movementsProvider = movementsProvider;
     }
 
+    /**
+     * Gestiona las posibles excepciones, crea y guarda los streams de entrada y salida, recoge información del cliente para saber si empezar con un inicio de sesión o un registro
+     */
     @Override
     public void run() {
         try {
@@ -142,7 +145,19 @@ public class HiloServidor extends Thread {
         app(usuario);
     }
 
+    /**
+     * Se comunica con el cliente para obtener todos los datos necesarios para crear un usuario, en caso de que el usuario se cree correctamente, se inicia sesión de forma automática
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     * @throws SignatureException
+     */
     private void register() throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException, SignatureException {
+        // DNI
         byte[] encryptedMessage = EncryptionHelper.encryptMessage("Introduzca su DNI con la letra en mayúscula", clientPublicKey);
         out.writeObject(encryptedMessage);
         String dni = "";
@@ -169,6 +184,7 @@ public class HiloServidor extends Thread {
             }
         }
 
+        // Nombre
         encryptedMessage = EncryptionHelper.encryptMessage("Introduzca su nombre", clientPublicKey);
         out.writeObject(encryptedMessage);
         String nombre = "";
@@ -185,6 +201,7 @@ public class HiloServidor extends Thread {
             }
         }
 
+        // Apellido
         encryptedMessage = EncryptionHelper.encryptMessage("Introduzca su apellido", clientPublicKey);
         out.writeObject(encryptedMessage);
         String apellido = "";
@@ -201,6 +218,7 @@ public class HiloServidor extends Thread {
             }
         }
 
+        // Email
         encryptedMessage = EncryptionHelper.encryptMessage("Introduzca su email", clientPublicKey);
         out.writeObject(encryptedMessage);
         String email = "";
@@ -217,6 +235,7 @@ public class HiloServidor extends Thread {
             }
         }
 
+        // Edad
         encryptedMessage = EncryptionHelper.encryptMessage("Introduzca su edad", clientPublicKey);
         out.writeObject(encryptedMessage);
         int edad = 1;
@@ -237,6 +256,7 @@ public class HiloServidor extends Thread {
             }
         }
 
+        // Contraseña
         boolean passwordsMatch = false;
         boolean first = true;
         byte[] password;
@@ -259,6 +279,7 @@ public class HiloServidor extends Thread {
             out.writeObject(passwordsMatch);
         } while (!passwordsMatch);
 
+        // Firma digital normas del banco
         String normasbanco = "¿Aceptas las normas del banco?\n1 - Sí\n2 - No";
         out.writeObject(EncryptionHelper.encryptMessage(normasbanco, clientPublicKey));
         out.writeObject(EncryptionHelper.signString(normasbanco, privateKey));
@@ -274,6 +295,17 @@ public class HiloServidor extends Thread {
 
     }
 
+    /**
+     * Pregunta al cliente qué tipo de operación quiere realizar.
+     * @param usuario El usuario con el que se ha accedido a la aplicación
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     private void app(User usuario) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
         int opcion;
         do {
@@ -299,6 +331,17 @@ public class HiloServidor extends Thread {
         cliente.close();
     }
 
+    /**
+     * Busca todas las cuentas de un usuario y las envía al cliente para que este pueda elegir una para realizar operaciones, o si prefiere regresar al menú inicial
+     * @param usuario El usuario con el que se ha accedido a la aplicación
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     private void cuentas(User usuario) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
         List<Account> cuentas = accountProvider.getAllByUser(usuario);
 
@@ -328,6 +371,17 @@ public class HiloServidor extends Thread {
         }
     }
 
+    /**
+     * Dada una cuenta, ofrece al cliente las diferentes operaciones disponibles la misma
+     * @param cuenta Cuenta que el usuario ha seleccionado para realizar operaciones
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     private void cuenta(Account cuenta) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
         cuenta = accountProvider.getByAccountNumber(cuenta.getAccountNumber());
         String menu = "Nombre: " + cuenta.getName() + "\nNúmero de cuenta: " + cuenta.getAccountNumber() + "\nSaldo: " + cuenta.getBalance() + "€" + "\n\nElige una acción:" + "\n1 - Ver todos los movimientos" + "\n2 - Ver movimientos de ingreso" + "\n3 - Ver movimientos de retirada" + "\n4 - Realizar ingreso desde cajero" + "\n5 - Realizar retirada desde cajero" + "\n6 - Volver a inicio";
@@ -387,6 +441,17 @@ public class HiloServidor extends Thread {
         }
     }
 
+    /**
+     * Envía un número aleatorio de 4 cifras y espera una respuesta del usuario, devuelve si el número enviado es igual al recibido
+     * @return Booleano indicando si la validación fue correcta o no
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     private boolean numeroSeguridadCorrecto() throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
         Random random = new Random();
         String numeroSeguridad = String.valueOf(random.nextInt(0, 9)) + String.valueOf(random.nextInt(0, 9)) + String.valueOf(random.nextInt(0, 9)) + String.valueOf(random.nextInt(0, 9));
@@ -400,6 +465,17 @@ public class HiloServidor extends Thread {
         return numeroRecibido.equals(numeroSeguridad);
     }
 
+    /**
+     * Envía al usuario un menú con los movimientos de una cuenta, espera una respuesta del usuario indicando qué movimiento quiere ver en detalle o la opcion de salir
+     * @param movimientos
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     private void verMovimientos(List<Movement> movimientos) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
         String menu = "Selecciona un movimiento para ver sus detalles:";
         int x = 1;
@@ -422,6 +498,17 @@ public class HiloServidor extends Thread {
 
     }
 
+    /**
+     * Se comunica con el usuario para obtener los datos necesarios para crear una nueva cuenta bancaria asociada al mismo
+     * @param usuario El usuario con el que se ha accedido a la aplicación
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     private void crearCuenta(User usuario) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
         out.writeObject(EncryptionHelper.encryptMessage("string", clientPublicKey));
         out.writeObject(EncryptionHelper.encryptMessage("Introduce un nombre para la nueva cuenta", clientPublicKey));
@@ -434,6 +521,19 @@ public class HiloServidor extends Thread {
         return;
     }
 
+    /**
+     * Dado un usuario, le ofrece al cliente una lista con sus cuentas para que elija una de ellas
+     * para ser la cuenta que emite la transferencia, pide un número de cuenta de destino,
+     * un concepto y una cantidad y si la validación de número aleatorio es correcta, realiza la transferencia
+     * @param usuario
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     private void transferencia(User usuario) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, IOException, ClassNotFoundException {
         List<Account> cuentas = accountProvider.getAllByUser(usuario);
 
